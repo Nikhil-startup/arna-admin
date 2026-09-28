@@ -5,13 +5,16 @@ import {
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { Product } from '../types';
+import { defaultDrops } from '../data/defaultDrops';
+import { supabase } from '../services/supabase';
 
 export const AdminProducts: React.FC = () => {
-  const { products, addProduct, updateProduct, deleteProduct, updateStock } = useAdmin();
+  const { products, addProduct, updateProduct, deleteProduct, updateStock, refreshData } = useAdmin();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -139,6 +142,20 @@ export const AdminProducts: React.FC = () => {
     setIsModalOpen(false);
   };
 
+  const handleRestoreDefaults = async () => {
+    setIsRestoring(true);
+    try {
+      const { error } = await supabase.from('products').upsert(defaultDrops);
+      if (error) throw error;
+      await refreshData();
+      alert('12 Core Luxury Drops successfully restored to Supabase catalog!');
+    } catch (e: any) {
+      alert('Error restoring drops: ' + e.message);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || p.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
@@ -160,13 +177,26 @@ export const AdminProducts: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-black text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 shadow-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Product</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {products.length === 0 && (
+            <button
+              onClick={handleRestoreDefaults}
+              disabled={isRestoring}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 bg-gray-100 text-gray-800 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-gray-200 transition border border-gray-200"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>{isRestoring ? 'Restoring...' : 'Restore Drops'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-black text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
       {/* Search & Filters */}
@@ -197,8 +227,40 @@ export const AdminProducts: React.FC = () => {
         </div>
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      {/* Product Grid or Empty State */}
+      {filteredProducts.length === 0 ? (
+        <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 shadow-sm space-y-4">
+          <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto text-gray-400">
+            <Layers className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-black uppercase tracking-wider text-gray-900">
+              No Products in Catalog
+            </h3>
+            <p className="text-xs text-gray-500 max-w-md mx-auto">
+              Your catalog has 0 items right now. Add custom garments with photo upload, or restore the 12 core luxury drops with one click.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={handleOpenAddModal}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-black text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Custom Product</span>
+            </button>
+            <button
+              onClick={handleRestoreDefaults}
+              disabled={isRestoring}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-gray-100 text-gray-900 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-gray-200 transition border border-gray-200"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>{isRestoring ? 'Restoring Drops...' : 'Restore 12 Core Luxury Drops'}</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {filteredProducts.map(p => (
           <div key={p.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between">
             <div>
@@ -287,7 +349,8 @@ export const AdminProducts: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Add / Edit Modal with Device Photo Upload */}
       {isModalOpen && (
