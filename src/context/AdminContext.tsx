@@ -19,20 +19,12 @@ interface AdminContextType {
 }
 
 const defaultStats: VisitorStats = {
-  totalVisitors: 1450,
-  todayVisitors: 180,
-  totalPageViews: 4890,
-  conversionRate: 3.4,
-  activeNow: 26,
-  history: [
-    { date: 'Mon', visitors: 620, views: 2400 },
-    { date: 'Tue', visitors: 710, views: 2800 },
-    { date: 'Wed', visitors: 830, views: 3100 },
-    { date: 'Thu', visitors: 790, views: 2950 },
-    { date: 'Fri', visitors: 940, views: 3700 },
-    { date: 'Sat', visitors: 1120, views: 4600 },
-    { date: 'Sun', visitors: 180, views: 680 }
-  ]
+  totalVisitors: 0,
+  todayVisitors: 0,
+  totalPageViews: 0,
+  conversionRate: 0,
+  activeNow: 1,
+  history: []
 };
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
