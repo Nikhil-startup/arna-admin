@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Package, Search, CheckCircle2, Clock, 
   Truck, Printer, Phone, MapPin, User, Check, AlertCircle 
@@ -292,9 +293,15 @@ export const AdminOrders: React.FC = () => {
       </div>
 
       {/* Printable Packing Slip Modal */}
-      {selectedOrderForSlip && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      {selectedOrderForSlip && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden"
+          onClick={() => setSelectedOrderForSlip(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-sm uppercase">Packing Slip // {selectedOrderForSlip.orderNumber}</h3>
               <button onClick={() => setSelectedOrderForSlip(null)} className="text-gray-400 hover:text-black font-bold">✕</button>
@@ -318,7 +325,8 @@ export const AdminOrders: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

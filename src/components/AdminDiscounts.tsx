@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Tag, Plus, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 
@@ -89,9 +90,15 @@ export const AdminDiscounts: React.FC = () => {
         ))}
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      {isModalOpen && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-sm uppercase">Create New Promo Code</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-black">✕</button>
@@ -161,7 +168,8 @@ export const AdminDiscounts: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
