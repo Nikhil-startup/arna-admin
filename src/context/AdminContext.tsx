@@ -11,6 +11,7 @@ interface AdminContextType {
   addProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
   updateProduct: (product: Product) => Promise<Product>;
   deleteProduct: (id: string) => Promise<boolean>;
+  updateStock: (id: string, newStock: number) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status'], packingNotes?: string) => Promise<void>;
   addCoupon: (coupon: Omit<DiscountCoupon, 'id' | 'usageCount'>) => Promise<void>;
   toggleCoupon: (id: string) => Promise<void>;
@@ -178,9 +179,34 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deleteProduct = async (id: string): Promise<boolean> => {
-    await supabase.from('products').delete().eq('id', id);
-    setProducts(prev => prev.filter(p => p.id !== id));
-    return true;
+    try {
+      // 1. Decouple any historical order items referencing this product to prevent FK constraint errors
+      await supabase.from('order_items').update({ product_id: null }).eq('product_id', id);
+
+      // 2. Delete product from Supabase
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase product delete error:', error);
+        alert('Could not delete product: ' + error.message);
+        return false;
+      }
+
+      // 3. Immediately update admin UI
+      setProducts(prev => prev.filter(p => p.id !== id));
+      return true;
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      alert('Delete failed: ' + err.message);
+      return false;
+    }
+  };
+
+  const updateStock = async (id: string, newStock: number): Promise<void> => {
+    const validStock = Math.max(0, newStock);
+    const { error } = await supabase.from('products').update({ stock_count: validStock }).eq('id', id);
+    if (!error) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, stockCount: validStock, inStock: validStock > 0 } : p));
+    }
   };
 
   // Order Fulfillment
@@ -246,6 +272,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addProduct,
         updateProduct,
         deleteProduct,
+        updateStock,
         updateOrderStatus,
         addCoupon,
         toggleCoupon,

@@ -64,16 +64,6 @@ export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-center space-y-1">
-          <p className="text-[11px] font-bold text-gray-800 flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Master Merchant Access</span>
-          </p>
-          <p className="text-[10px] text-gray-500">
-            Default Passcode: <code className="font-mono font-bold text-black">ARNA@2026</code>
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { useAdmin } from '../context/AdminContext';
 import { Product } from '../types';
 
 export const AdminProducts: React.FC = () => {
-  const { products, addProduct, updateProduct, deleteProduct } = useAdmin();
+  const { products, addProduct, updateProduct, deleteProduct, updateStock } = useAdmin();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -207,17 +207,26 @@ export const AdminProducts: React.FC = () => {
                 <span className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded">
                   {p.category}
                 </span>
-                <span className="absolute bottom-2 right-2 bg-white/95 backdrop-blur-sm text-black text-[10px] font-black px-2 py-0.5 rounded border border-gray-200 shadow-sm">
-                  Stock: {p.stockCount}
+                <span className={`absolute bottom-2 right-2 backdrop-blur-sm text-[10px] font-black px-2 py-0.5 rounded border shadow-sm ${
+                  p.stockCount <= 0
+                    ? 'bg-red-600 text-white border-red-700'
+                    : p.stockCount <= 5
+                    ? 'bg-amber-400 text-black border-amber-500'
+                    : 'bg-white/95 text-black border-gray-200'
+                }`}>
+                  {p.stockCount <= 0 ? '🔴 SOLD OUT (0)' : `Stock: ${p.stockCount}`}
                 </span>
               </div>
 
-              <div className="p-4 space-y-1">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900 truncate">
-                  {p.title}
-                </h3>
-                <p className="text-[11px] text-gray-500">{p.fit}</p>
-                <div className="flex items-center space-x-2 pt-1">
+              <div className="p-4 space-y-2">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900 truncate">
+                    {p.title}
+                  </h3>
+                  <p className="text-[11px] text-gray-500">{p.fit}</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
                   <span className="text-sm font-black text-black">₹{p.price.toLocaleString('en-IN')}</span>
                   {p.originalPrice > p.price && (
                     <span className="text-xs text-gray-400 line-through">₹{p.originalPrice}</span>
@@ -225,6 +234,32 @@ export const AdminProducts: React.FC = () => {
                   {p.discount > 0 && (
                     <span className="text-[10px] font-black text-emerald-600">({p.discount}% OFF)</span>
                   )}
+                </div>
+
+                {/* Stock Controls */}
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-semibold text-gray-500">Live Inventory:</span>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      type="button"
+                      onClick={() => updateStock(p.id, Math.max(0, p.stockCount - 1))}
+                      className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 text-black font-bold flex items-center justify-center transition"
+                      title="Decrease Stock by 1"
+                    >
+                      -
+                    </button>
+                    <span className={`px-2 py-0.5 rounded text-xs font-black font-mono ${p.stockCount <= 0 ? 'text-red-600 bg-red-50' : 'text-gray-900'}`}>
+                      {p.stockCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateStock(p.id, p.stockCount + 5)}
+                      className="px-2 h-6 rounded bg-black hover:bg-neutral-800 text-white text-[10px] font-bold flex items-center justify-center transition"
+                      title="Quick Restock +5 Units"
+                    >
+                      +5
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -235,15 +270,19 @@ export const AdminProducts: React.FC = () => {
                 className="flex items-center space-x-1.5 text-xs font-bold text-gray-700 hover:text-black transition"
               >
                 <Edit2 className="w-3.5 h-3.5" />
-                <span>Edit</span>
+                <span>Edit Product</span>
               </button>
               <button
-                onClick={() => {
-                  if (confirm(`Delete "${p.title}" from Supabase database?`)) deleteProduct(p.id);
+                onClick={async () => {
+                  if (confirm(`Are you sure you want to permanently delete "${p.title}"? It will be removed from both the database and the customer storefront immediately.`)) {
+                    await deleteProduct(p.id);
+                  }
                 }}
-                className="text-gray-400 hover:text-red-600 transition"
+                className="flex items-center space-x-1 text-xs font-bold text-gray-400 hover:text-red-600 transition p-1 rounded hover:bg-red-50"
+                title="Delete Product"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
               </button>
             </div>
           </div>
