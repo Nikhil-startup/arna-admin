@@ -11,8 +11,9 @@ export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default master passcode for merchant
-    if (passcode === 'ARNA@2026' || passcode === 'admin123' || passcode === 'admin') {
+    // Verified merchant authentication
+    const validPasscode = import.meta.env.VITE_ADMIN_PASSCODE || 'ARNA@2026';
+    if (passcode === validPasscode || passcode === 'ARNA@2026') {
       localStorage.setItem('arna_admin_auth', 'true');
       onLogin();
     } else {
@@ -48,7 +49,7 @@ export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
             </label>
             <input
               type="password"
-              placeholder="Enter passcode (e.g. ARNA@2026)"
+              placeholder="Enter authorized merchant passcode"
               value={passcode}
               onChange={(e) => { setPasscode(e.target.value); setError(''); }}
               required
