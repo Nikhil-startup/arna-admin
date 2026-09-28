@@ -6,6 +6,7 @@ import { AdminProducts } from './components/AdminProducts';
 import { AdminDiscounts } from './components/AdminDiscounts';
 import { AdminAnalytics } from './components/AdminAnalytics';
 import { AdminLogin } from './components/AdminLogin';
+import { AdminLoader } from './components/AdminLoader';
 
 const AdminContent: React.FC = () => {
   const { orders, visitorStats } = useAdmin();
@@ -48,6 +49,7 @@ const AdminContent: React.FC = () => {
 export default function App() {
   return (
     <AdminProvider>
+      <AdminLoader />
       <AdminContent />
     </AdminProvider>
   );
