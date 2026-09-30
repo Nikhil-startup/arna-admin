@@ -2,6 +2,23 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { Product, Order, DiscountCoupon, VisitorStats } from '../types';
 
+export function extractSoldOutAt(row: any): string | undefined {
+  if (row.sold_out_at) return row.sold_out_at;
+  if (row.description && typeof row.description === 'string') {
+    const match = row.description.match(/<!--sold_out_at:([^>]+)-->/);
+    if (match && match[1]) return match[1];
+  }
+  return undefined;
+}
+
+export function embedSoldOutAtInDescription(description: string, soldOutAt?: string | null): string {
+  const clean = (description || '').replace(/<!--sold_out_at:[^>]+-->/g, '').trim();
+  if (soldOutAt) {
+    return `${clean}\n<!--sold_out_at:${soldOutAt}-->`;
+  }
+  return clean;
+}
+
 interface AdminContextType {
   products: Product[];
   orders: Order[];
@@ -41,35 +58,50 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch Products
-      const { data: prodData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+      // 1. Fetch Products with query limit (avoids loading whole DB unbounded)
+      const { data: prodData } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(80);
+
       if (prodData) {
-        setProducts(prodData.map((row: any) => ({
-          id: row.id,
-          title: row.title,
-          slug: row.slug,
-          category: row.category,
-          fit: row.fit || 'Relaxed Fit',
-          price: Number(row.price),
-          originalPrice: Number(row.original_price || row.price),
-          discount: row.discount || 0,
-          stockCount: row.stock_count || 10,
-          inStock: (row.stock_count || 10) > 0,
-          sizes: row.sizes || ['S', 'M', 'L', 'XL'],
-          colors: row.colors || [{ name: 'Classic', hex: '#111827' }],
-          images: row.images || [],
-          description: row.description || '',
-          fabric: row.fabric || '',
-          rating: Number(row.rating || 4.8),
-          reviewsCount: Number(row.reviews_count || 100),
-          isNew: row.is_new ?? true,
-          isTrending: row.is_trending ?? false,
-          isBestSeller: row.is_bestseller ?? false
-        })));
+        setProducts(prodData.map((row: any) => {
+          const stockCount = row.stock_count ?? 10;
+          const soldOutAt = extractSoldOutAt(row) || (stockCount <= 0 ? (row.updated_at || row.created_at || new Date().toISOString()) : undefined);
+          return {
+            id: row.id,
+            title: row.title,
+            slug: row.slug,
+            category: row.category,
+            fit: row.fit || 'Relaxed Fit',
+            price: Number(row.price),
+            originalPrice: Number(row.original_price || row.price),
+            discount: row.discount || 0,
+            stockCount,
+            inStock: stockCount > 0,
+            soldOutAt,
+            sizes: row.sizes || ['S', 'M', 'L', 'XL'],
+            colors: row.colors || [{ name: 'Classic', hex: '#111827' }],
+            images: row.images || [],
+            description: (row.description || '').replace(/<!--sold_out_at:[^>]+-->/g, '').trim(),
+            fabric: row.fabric || '',
+            rating: Number(row.rating || 4.8),
+            reviewsCount: Number(row.reviews_count || 100),
+            isNew: row.is_new ?? true,
+            isTrending: row.is_trending ?? false,
+            isBestSeller: row.is_bestseller ?? false
+          };
+        }));
       }
 
-      // 2. Fetch Orders
-      const { data: orderData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      // 2. Fetch Orders with query limit
+      const { data: orderData } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(60);
+
       if (orderData) {
         setOrders(orderData.map((row: any) => ({
           id: row.id,
@@ -83,6 +115,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           paymentMethod: row.payment_method,
           status: row.status,
           packingNotes: row.packing_notes || '',
+          orderVerificationKey: row.order_verification_key,
           createdAt: row.created_at,
           estimatedDelivery: 'In 2-3 business days'
         })));
@@ -128,38 +161,49 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Product CRUD
   const addProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
     const id = 'prod_' + Date.now();
-    const newProduct: Product = { ...productData, id };
+    const soldOutAt = productData.stockCount <= 0 ? (productData.soldOutAt || new Date().toISOString()) : undefined;
+    const descWithTag = embedSoldOutAtInDescription(productData.description, soldOutAt);
+    const newProduct: Product = { ...productData, id, soldOutAt };
 
-    await supabase.from('products').insert([
-      {
-        id,
-        title: productData.title,
-        slug: productData.slug,
-        category: productData.category,
-        fit: productData.fit,
-        price: productData.price,
-        original_price: productData.originalPrice,
-        discount: productData.discount,
-        stock_count: productData.stockCount,
-        sizes: productData.sizes,
-        colors: productData.colors,
-        images: productData.images,
-        description: productData.description,
-        fabric: productData.fabric,
-        rating: 4.8,
-        reviews_count: 1,
-        is_new: true,
-        is_trending: false,
-        is_bestseller: false
-      }
-    ]);
+    const row: any = {
+      id,
+      title: productData.title,
+      slug: productData.slug,
+      category: productData.category,
+      fit: productData.fit,
+      price: productData.price,
+      original_price: productData.originalPrice,
+      discount: productData.discount,
+      stock_count: productData.stockCount,
+      sizes: productData.sizes,
+      colors: productData.colors,
+      images: productData.images,
+      description: descWithTag,
+      fabric: productData.fabric,
+      rating: 4.8,
+      reviews_count: 1,
+      is_new: true,
+      is_trending: false,
+      is_bestseller: false
+    };
+
+    try {
+      row.sold_out_at = soldOutAt || null;
+      await supabase.from('products').insert([row]);
+    } catch {
+      delete row.sold_out_at;
+      await supabase.from('products').insert([row]);
+    }
 
     setProducts(prev => [newProduct, ...prev]);
     return newProduct;
   };
 
   const updateProduct = async (productData: Product): Promise<Product> => {
-    await supabase.from('products').update({
+    const soldOutAt = productData.stockCount <= 0 ? (productData.soldOutAt || new Date().toISOString()) : undefined;
+    const descWithTag = embedSoldOutAtInDescription(productData.description, soldOutAt);
+
+    const updatePayload: any = {
       title: productData.title,
       category: productData.category,
       fit: productData.fit,
@@ -170,18 +214,27 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       sizes: productData.sizes,
       colors: productData.colors,
       images: productData.images,
-      description: productData.description,
+      description: descWithTag,
       fabric: productData.fabric
-    }).eq('id', productData.id);
+    };
 
-    setProducts(prev => prev.map(p => p.id === productData.id ? productData : p));
-    return productData;
+    try {
+      updatePayload.sold_out_at = soldOutAt || null;
+      await supabase.from('products').update(updatePayload).eq('id', productData.id);
+    } catch {
+      delete updatePayload.sold_out_at;
+      await supabase.from('products').update(updatePayload).eq('id', productData.id);
+    }
+
+    const updatedProduct = { ...productData, soldOutAt };
+    setProducts(prev => prev.map(p => p.id === productData.id ? updatedProduct : p));
+    return updatedProduct;
   };
 
   const deleteProduct = async (id: string): Promise<boolean> => {
     try {
-      // 1. Decouple any historical order items referencing this product to prevent FK constraint errors
-      await supabase.from('order_items').update({ product_id: null }).eq('product_id', id);
+      // 1. Clean up any historical order items referencing this product to satisfy FK constraint
+      await supabase.from('order_items').delete().eq('product_id', id);
 
       // 2. Delete product from Supabase
       const { error } = await supabase.from('products').delete().eq('id', id);
@@ -203,10 +256,29 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateStock = async (id: string, newStock: number): Promise<void> => {
     const validStock = Math.max(0, newStock);
-    const { error } = await supabase.from('products').update({ stock_count: validStock }).eq('id', id);
-    if (!error) {
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, stockCount: validStock, inStock: validStock > 0 } : p));
+    const prod = products.find(p => p.id === id);
+    const soldOutAt = validStock <= 0 ? (prod?.soldOutAt || new Date().toISOString()) : undefined;
+    const descWithTag = embedSoldOutAtInDescription(prod?.description || '', soldOutAt);
+
+    const updatePayload: any = {
+      stock_count: validStock,
+      description: descWithTag
+    };
+
+    try {
+      updatePayload.sold_out_at = soldOutAt || null;
+      await supabase.from('products').update(updatePayload).eq('id', id);
+    } catch {
+      delete updatePayload.sold_out_at;
+      await supabase.from('products').update(updatePayload).eq('id', id);
     }
+
+    setProducts(prev => prev.map(p => p.id === id ? { 
+      ...p, 
+      stockCount: validStock, 
+      inStock: validStock > 0,
+      soldOutAt 
+    } : p));
   };
 
   // Order Fulfillment

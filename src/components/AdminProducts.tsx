@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Plus, Edit2, Trash2, Search, Upload, 
-  Image as ImageIcon, Check, X, Sparkles, Tag, Layers
+  Image as ImageIcon, Check, X, Sparkles, Tag, Layers,
+  AlertTriangle, Clock, Bell
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { Product } from '../types';
@@ -166,6 +167,42 @@ export const AdminProducts: React.FC = () => {
     }
   };
 
+  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>([]);
+
+  const getSoldOutDetails = (p: Product) => {
+    if (p.stockCount > 0 || !p.soldOutAt) {
+      return { isAutoPruned: false, elapsedText: '', badgeText: '' };
+    }
+    const soldOutTime = new Date(p.soldOutAt).getTime();
+    if (isNaN(soldOutTime)) return { isAutoPruned: false, elapsedText: '', badgeText: '' };
+    const elapsedMinutes = Math.floor((Date.now() - soldOutTime) / (60 * 1000));
+    const FIVE_HOURS_MINS = 300;
+
+    if (elapsedMinutes >= FIVE_HOURS_MINS) {
+      const hours = Math.floor(elapsedMinutes / 60);
+      const mins = elapsedMinutes % 60;
+      return {
+        isAutoPruned: true,
+        elapsedText: `${hours}h ${mins}m`,
+        badgeText: `🚫 HIDDEN (5h+ Sold Out)`
+      };
+    } else {
+      const remainingMins = FIVE_HOURS_MINS - elapsedMinutes;
+      const remHours = Math.floor(remainingMins / 60);
+      const remMins = remainingMins % 60;
+      return {
+        isAutoPruned: false,
+        elapsedText: `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m`,
+        badgeText: `⏳ Auto-prunes in ${remHours}h ${remMins}m`
+      };
+    }
+  };
+
+  const autoPrunedProducts = products.filter(p => {
+    if (dismissedNoticeIds.includes(p.id)) return false;
+    return getSoldOutDetails(p).isAutoPruned;
+  });
+
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || p.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
@@ -183,7 +220,7 @@ export const AdminProducts: React.FC = () => {
             <span>PRODUCT CATALOG MANAGER</span>
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Add new clothes directly with phone/laptop photo uploads. Updates live in Supabase.
+            Add new clothes directly with photo uploads. 5-hour sold-out auto-removal active.
           </p>
         </div>
 
@@ -208,6 +245,76 @@ export const AdminProducts: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 5-Hour Sold-Out Auto-Pruning Notification Alert Banner */}
+      {autoPrunedProducts.length > 0 && (
+        <div className="bg-gradient-to-r from-red-50 via-rose-50 to-amber-50 border-2 border-red-300 rounded-2xl p-5 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-red-950 uppercase tracking-wide flex items-center space-x-1.5">
+                  <span>5-HOUR SOLD-OUT AUTO-REMOVAL NOTICE</span>
+                  <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">
+                    {autoPrunedProducts.length} Item{autoPrunedProducts.length > 1 ? 's' : ''} Hidden
+                  </span>
+                </h3>
+                <p className="text-[11px] text-red-800">
+                  These items have been sold out for 5+ hours and were automatically removed from customer storefront to maintain luxury catalog freshness.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setDismissedNoticeIds(prev => [...prev, ...autoPrunedProducts.map(p => p.id)])}
+              className="text-[11px] font-bold text-red-800 hover:text-black bg-white/80 hover:bg-white px-3 py-1.5 rounded-lg border border-red-200 transition self-start sm:self-auto"
+            >
+              Dismiss Notice
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {autoPrunedProducts.map(p => {
+              const details = getSoldOutDetails(p);
+              return (
+                <div key={p.id} className="bg-white rounded-xl border border-red-200/80 p-3 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <img src={p.images[0]} alt={p.title} className="w-11 h-13 object-cover rounded-lg bg-gray-100 shrink-0" />
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-gray-900 uppercase truncate">{p.title}</h4>
+                      <p className="text-[10px] text-gray-500 capitalize">{p.category} &bull; ₹{p.price}</p>
+                      <p className="text-[10px] font-bold text-red-600 flex items-center space-x-1 mt-0.5">
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span>Sold out for {details.elapsedText}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <button
+                      onClick={() => updateStock(p.id, 10)}
+                      className="px-2.5 py-1 bg-black hover:bg-neutral-800 text-white text-[10px] font-black uppercase rounded-lg transition"
+                      title="Restock +10 units to republish on storefront"
+                    >
+                      Restock +10
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Permanently delete "${p.title}"?`)) {
+                          await deleteProduct(p.id);
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-[10px] font-bold uppercase rounded-lg transition border border-red-200"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Search & Filters */}
       <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
@@ -271,7 +378,9 @@ export const AdminProducts: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {filteredProducts.map(p => (
+        {filteredProducts.map(p => {
+          const details = getSoldOutDetails(p);
+          return (
           <div key={p.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between">
             <div>
               <div className="relative aspect-[3/4] bg-gray-100">
@@ -280,13 +389,15 @@ export const AdminProducts: React.FC = () => {
                   {p.category}
                 </span>
                 <span className={`absolute bottom-2 right-2 backdrop-blur-sm text-[10px] font-black px-2 py-0.5 rounded border shadow-sm ${
-                  p.stockCount <= 0
+                  details.isAutoPruned
+                    ? 'bg-red-700 text-white border-red-800'
+                    : p.stockCount <= 0
                     ? 'bg-red-600 text-white border-red-700'
                     : p.stockCount <= 5
                     ? 'bg-amber-400 text-black border-amber-500'
                     : 'bg-white/95 text-black border-gray-200'
                 }`}>
-                  {p.stockCount <= 0 ? '🔴 SOLD OUT (0)' : `Stock: ${p.stockCount}`}
+                  {details.isAutoPruned ? '🚫 HIDDEN (5h+ OUT)' : p.stockCount <= 0 ? '🔴 SOLD OUT (0)' : `Stock: ${p.stockCount}`}
                 </span>
               </div>
 
@@ -358,7 +469,8 @@ export const AdminProducts: React.FC = () => {
               </button>
             </div>
           </div>
-        ))}
+        );
+        })}
         </div>
       )}
 

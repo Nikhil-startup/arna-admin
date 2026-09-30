@@ -17,6 +17,7 @@ export interface Product {
   isBestSeller: boolean;
   inStock: boolean;
   stockCount: number;
+  soldOutAt?: string;
   description: string;
   fabric: string;
   washCare?: string;
@@ -58,6 +59,7 @@ export interface Order {
   createdAt: string;
   estimatedDelivery?: string;
   packingNotes?: string;
+  orderVerificationKey?: string;
 }
 
 export interface DiscountCoupon {

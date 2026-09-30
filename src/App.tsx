@@ -49,7 +49,6 @@ const AdminContent: React.FC = () => {
 export default function App() {
   return (
     <AdminProvider>
-      <AdminLoader />
       <AdminContent />
     </AdminProvider>
   );
