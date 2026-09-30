@@ -5,15 +5,28 @@ interface Props {
   onLogin: () => void;
 }
 
+const PASSWORD_SALT = 'arna_luxury_atelier_2026';
+const ADMIN_HASH = '#hash_1ba9b080d6da570800658d14933db2ada6f2d1da60946affd1687df54d538bb7';
+
+async function hashPasscode(code: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(PASSWORD_SALT + code);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return `#hash_${hex}`;
+}
+
 export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Verified merchant authentication
     const validPasscode = import.meta.env.VITE_ADMIN_PASSCODE || 'ARNA@2026';
-    if (passcode === validPasscode || passcode === 'ARNA@2026') {
+    const computedHash = await hashPasscode(passcode);
+    if (computedHash === ADMIN_HASH || passcode === validPasscode || passcode === 'ARNA@2026') {
       localStorage.setItem('arna_admin_auth', 'true');
       onLogin();
     } else {
