@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#0c0d12" />
-  <rect x="12" y="12" width="40" height="40" rx="8" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.4" transform="rotate(45 32 32)" />
-  <text x="32" y="41" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-size="26" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">A</text>
-  <circle cx="32" cy="18" r="2" fill="#10b981" />
+  <rect width="64" height="64" rx="14" fill="#0A0A0A" />
+  <text x="27" y="46" font-family="'Impact', 'Arial Black', -apple-system, sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" text-anchor="middle">A</text>
+  <!-- Logo ✦ 4-pointed star -->
+  <path d="M 47,14 Q 47,22 55,22 Q 47,22 47,30 Q 47,22 39,22 Q 47,22 47,14 Z" fill="#FFFFFF" />
 </svg>

@@ -24,13 +24,18 @@ export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-black/20">
-            <Lock className="w-7 h-7" />
+        <div className="text-center space-y-3">
+          <div className="flex justify-center pb-1">
+            <img 
+              src="/logo.png" 
+              alt="ARNA MENS WEAR" 
+              className="h-12 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-wider text-black">
-            ARNA MERCHANT HUB
-          </h1>
+          <div className="inline-flex items-center space-x-2 bg-neutral-100 text-neutral-900 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+            <Lock className="w-3.5 h-3.5" />
+            <span>Merchant Control Hub</span>
+          </div>
           <p className="text-xs text-gray-500 font-medium">
             Authorized merchant access for order fulfillment & catalog control
           </p>

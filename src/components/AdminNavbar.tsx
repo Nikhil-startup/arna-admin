@@ -24,11 +24,14 @@ export const AdminNavbar: React.FC<Props> = ({
           {/* Brand Logo & Status */}
           <div className="flex items-center space-x-4">
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xl font-black tracking-widest text-black uppercase">
-                  ARNA
-                </span>
-                <span className="bg-neutral-100 text-neutral-800 text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-widest">
+              <div className="flex items-center space-x-2.5">
+                <img 
+                  src="/logo.png" 
+                  alt="ARNA MENS WEAR" 
+                  className="h-8 w-auto object-contain select-none"
+                  decoding="async"
+                />
+                <span className="bg-black text-white text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-widest">
                   MERCHANT
                 </span>
               </div>
