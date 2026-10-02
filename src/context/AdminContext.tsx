@@ -232,6 +232,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deleteProduct = async (id: string): Promise<boolean> => {
+    // Optimistic UI Update: remove from list immediately (0ms)
+    const previousProducts = products;
+    setProducts(prev => prev.filter(p => p.id !== id));
+
     try {
       // 1. Clean up any historical order items referencing this product to satisfy FK constraint
       await supabase.from('order_items').delete().eq('product_id', id);
@@ -240,15 +244,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) {
         console.error('Supabase product delete error:', error);
+        setProducts(previousProducts); // Rollback optimistic state
         alert('Could not delete product: ' + error.message);
         return false;
       }
-
-      // 3. Immediately update admin UI
-      setProducts(prev => prev.filter(p => p.id !== id));
       return true;
     } catch (err: any) {
       console.error('Delete error:', err);
+      setProducts(previousProducts); // Rollback optimistic state
       alert('Delete failed: ' + err.message);
       return false;
     }
@@ -260,6 +263,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const soldOutAt = validStock <= 0 ? (prod?.soldOutAt || new Date().toISOString()) : undefined;
     const descWithTag = embedSoldOutAtInDescription(prod?.description || '', soldOutAt);
 
+    // Optimistic UI Update: immediately update state in 0ms
+    const previousProducts = products;
+    setProducts(prev => prev.map(p => p.id === id ? { 
+      ...p, 
+      stockCount: validStock, 
+      inStock: validStock > 0,
+      soldOutAt 
+    } : p));
+
     const updatePayload: any = {
       stock_count: validStock,
       description: descWithTag
@@ -270,24 +282,18 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await supabase.from('products').update(updatePayload).eq('id', id);
     } catch {
       delete updatePayload.sold_out_at;
-      await supabase.from('products').update(updatePayload).eq('id', id);
+      try {
+        await supabase.from('products').update(updatePayload).eq('id', id);
+      } catch (err) {
+        setProducts(previousProducts); // Rollback optimistic state
+      }
     }
-
-    setProducts(prev => prev.map(p => p.id === id ? { 
-      ...p, 
-      stockCount: validStock, 
-      inStock: validStock > 0,
-      soldOutAt 
-    } : p));
   };
 
-  // Order Fulfillment
+  // Order Fulfillment (Optimistic UI Rendering)
   const updateOrderStatus = async (orderId: string, status: Order['status'], packingNotes?: string) => {
-    const updatePayload: any = { status };
-    if (packingNotes !== undefined) updatePayload.packing_notes = packingNotes;
-
-    await supabase.from('orders').update(updatePayload).eq('id', orderId);
-
+    // Optimistic UI Update: update badge and status in 0ms
+    const previousOrders = orders;
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
         return {
@@ -298,6 +304,19 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return o;
     }));
+
+    const updatePayload: any = { status };
+    if (packingNotes !== undefined) updatePayload.packing_notes = packingNotes;
+
+    try {
+      const { error } = await supabase.from('orders').update(updatePayload).eq('id', orderId);
+      if (error) {
+        setOrders(previousOrders); // Rollback optimistic state on error
+        console.warn('Order status update rollback:', error);
+      }
+    } catch (err) {
+      setOrders(previousOrders); // Rollback optimistic state
+    }
   };
 
   // Coupon CRUD

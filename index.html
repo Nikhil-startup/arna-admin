@@ -17,7 +17,61 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   </head>
   <body class="bg-gray-50 text-gray-900 antialiased font-sans selection:bg-black selection:text-white">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Pre-rendered Static Edge Shell (0ms First Contentful Paint before JS Hydration) -->
+      <style>
+        .admin-shell-pulse { animation: adminPulse 1.5s ease-in-out infinite; }
+        @keyframes adminPulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 0.35; } }
+      </style>
+      <div style="min-height: 100vh; background-color: #f8fafc; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+        <!-- Top Admin Header -->
+        <header style="background: #ffffff; border-bottom: 1px solid #e2e8f0; height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 32px; height: 32px; background: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 14px;">A</div>
+            <div>
+              <div style="font-weight: 800; font-size: 14px; letter-spacing: -0.02em; color: #0f172a;">ARNA MENS WEAR</div>
+              <div style="font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0.05em; text-transform: uppercase;">MERCHANT HUB</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #10b981; font-weight: 600;">
+              <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span> SYSTEM ACTIVE
+            </div>
+            <div class="admin-shell-pulse" style="width: 36px; height: 36px; background: #e2e8f0; border-radius: 50%;"></div>
+          </div>
+        </header>
+
+        <!-- Main Layout Skeleton -->
+        <div style="display: flex; min-height: calc(100vh - 64px);">
+          <!-- Sidebar Skeleton -->
+          <aside style="width: 240px; background: #ffffff; border-right: 1px solid #e2e8f0; padding: 24px 16px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="admin-shell-pulse" style="height: 38px; background: #f1f5f9; border-radius: 8px; width: 100%;"></div>
+            <div class="admin-shell-pulse" style="height: 38px; background: #f1f5f9; border-radius: 8px; width: 100%;"></div>
+            <div class="admin-shell-pulse" style="height: 38px; background: #f1f5f9; border-radius: 8px; width: 100%;"></div>
+            <div class="admin-shell-pulse" style="height: 38px; background: #f1f5f9; border-radius: 8px; width: 100%;"></div>
+          </aside>
+
+          <!-- Content Skeleton -->
+          <main style="flex: 1; padding: 32px 36px; max-width: 1400px;">
+            <!-- Top stats row -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 28px;">
+              <div class="admin-shell-pulse" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; height: 100px;"></div>
+              <div class="admin-shell-pulse" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; height: 100px;"></div>
+              <div class="admin-shell-pulse" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; height: 100px;"></div>
+              <div class="admin-shell-pulse" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; height: 100px;"></div>
+            </div>
+
+            <!-- Table Card skeleton -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+              <div class="admin-shell-pulse" style="height: 24px; width: 220px; background: #e2e8f0; border-radius: 6px; margin-bottom: 20px;"></div>
+              <div class="admin-shell-pulse" style="height: 48px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;"></div>
+              <div class="admin-shell-pulse" style="height: 48px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;"></div>
+              <div class="admin-shell-pulse" style="height: 48px; background: #f8fafc; border-radius: 8px;"></div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
