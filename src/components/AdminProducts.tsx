@@ -8,7 +8,6 @@ import {
 import { useAdmin } from '../context/AdminContext';
 import { Product } from '../types';
 import { defaultDrops } from '../data/defaultDrops';
-import { supabase } from '../services/supabase';
 
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
@@ -156,10 +155,34 @@ export const AdminProducts: React.FC = () => {
   const handleRestoreDefaults = async () => {
     setIsRestoring(true);
     try {
-      const { error } = await supabase.from('products').upsert(defaultDrops);
-      if (error) throw error;
+      for (const drop of defaultDrops) {
+        const exists = products.find(p => p.id === drop.id || p.title === drop.title);
+        if (!exists) {
+          await addProduct({
+            title: drop.title,
+            slug: drop.slug,
+            category: drop.category as any,
+            fit: drop.fit,
+            price: drop.price,
+            originalPrice: drop.original_price,
+            discount: drop.discount,
+            stockCount: drop.stock_count,
+            inStock: drop.stock_count > 0,
+            sizes: drop.sizes,
+            colors: drop.colors,
+            images: drop.images,
+            description: drop.description,
+            fabric: drop.fabric,
+            rating: drop.rating,
+            reviewsCount: drop.reviews_count,
+            isNew: drop.is_new,
+            isTrending: drop.is_trending,
+            isBestSeller: drop.is_bestseller
+          });
+        }
+      }
       await refreshData();
-      alert('12 Core Luxury Drops successfully restored to Supabase catalog!');
+      alert('12 Core Luxury Drops successfully verified & synced to catalog!');
     } catch (e: any) {
       alert('Error restoring drops: ' + e.message);
     } finally {

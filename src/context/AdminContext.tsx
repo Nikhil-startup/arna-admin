@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { API_BASE_URL, defaultHeaders } from '../services/api';
 import { Product, Order, DiscountCoupon, VisitorStats } from '../types';
 
 export function extractSoldOutAt(row: any): string | undefined {
@@ -54,21 +54,17 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [visitorStats, setVisitorStats] = useState<VisitorStats>(defaultStats);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch all live data from Supabase
+  // Fetch all live data from FastAPI Backend (Keys strictly protected on backend)
   const refreshData = async () => {
     setIsLoading(true);
     try {
       // 1. Fetch Products with query limit (avoids loading whole DB unbounded)
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(80);
-
-      if (prodData) {
+      const prodRes = await fetch(`${API_BASE_URL}/products?limit=80`, { headers: defaultHeaders });
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
         setProducts(prodData.map((row: any) => {
-          const stockCount = row.stock_count ?? 10;
-          const soldOutAt = extractSoldOutAt(row) || (stockCount <= 0 ? (row.updated_at || row.created_at || new Date().toISOString()) : undefined);
+          const stockCount = row.stockCount ?? row.stock_count ?? 10;
+          const soldOutAt = row.soldOutAt || extractSoldOutAt(row) || (stockCount <= 0 ? (row.updated_at || row.created_at || new Date().toISOString()) : undefined);
           return {
             id: row.id,
             title: row.title,
@@ -76,7 +72,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             category: row.category,
             fit: row.fit || 'Relaxed Fit',
             price: Number(row.price),
-            originalPrice: Number(row.original_price || row.price),
+            originalPrice: Number(row.originalPrice || row.original_price || row.price),
             discount: row.discount || 0,
             stockCount,
             inStock: stockCount > 0,
@@ -87,68 +83,72 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             description: (row.description || '').replace(/<!--sold_out_at:[^>]+-->/g, '').trim(),
             fabric: row.fabric || '',
             rating: Number(row.rating || 4.8),
-            reviewsCount: Number(row.reviews_count || 100),
-            isNew: row.is_new ?? true,
-            isTrending: row.is_trending ?? false,
-            isBestSeller: row.is_bestseller ?? false
+            reviewsCount: Number(row.reviewsCount || row.reviews_count || 100),
+            isNew: row.isNew ?? row.is_new ?? true,
+            isTrending: row.isTrending ?? row.is_trending ?? false,
+            isBestSeller: row.isBestSeller ?? row.is_bestseller ?? false
           };
         }));
       }
 
       // 2. Fetch Orders with query limit
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(60);
-
-      if (orderData) {
+      const orderRes = await fetch(`${API_BASE_URL}/orders?limit=60`, { headers: defaultHeaders });
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
         setOrders(orderData.map((row: any) => ({
           id: row.id,
-          orderNumber: row.order_number,
-          shippingAddress: row.shipping_address,
-          items: row.items,
+          orderNumber: row.order_number || row.orderNumber,
+          shippingAddress: row.shipping_address || row.shippingAddress,
+          items: row.items || (row.order_items ? row.order_items.map((it: any) => ({
+            id: it.id,
+            product: { id: it.product_id, title: it.product_title, price: it.unit_price, images: [] },
+            selectedSize: it.selected_size,
+            selectedColor: it.selected_color,
+            quantity: it.quantity
+          })) : []),
           subtotal: Number(row.subtotal || row.total_amount),
           discount: Number(row.discount || 0),
           shippingFee: Number(row.shipping_fee || 0),
-          total: Number(row.total_amount),
-          paymentMethod: row.payment_method,
+          total: Number(row.total_amount || row.total),
+          paymentMethod: row.payment_method || row.paymentMethod,
           status: row.status,
-          packingNotes: row.packing_notes || '',
-          orderVerificationKey: row.order_verification_key,
-          createdAt: row.created_at,
+          packingNotes: row.packing_notes || row.packingNotes || '',
+          orderVerificationKey: row.order_verification_key || row.orderVerificationKey,
+          createdAt: row.created_at || row.createdAt,
           estimatedDelivery: 'In 2-3 business days'
         })));
       }
 
       // 3. Fetch Coupons
-      const { data: couponData } = await supabase.from('coupons').select('*').order('code', { ascending: true });
-      if (couponData) {
+      const couponRes = await fetch(`${API_BASE_URL}/coupons`, { headers: defaultHeaders });
+      if (couponRes.ok) {
+        const couponData = await couponRes.json();
         setCoupons(couponData.map((c: any) => ({
           id: c.id,
           code: c.code,
           type: c.type,
           value: Number(c.value),
-          minOrderValue: Number(c.min_order_value || 0),
-          isActive: c.is_active,
-          usageCount: c.usage_count || 0
+          minOrderValue: Number(c.min_order_value || c.minOrderValue || 0),
+          isActive: c.is_active ?? c.isActive ?? true,
+          usageCount: c.usage_count || c.usageCount || 0
         })));
       }
 
       // 4. Fetch Visitor Stats
-      const { data: statData } = await supabase.from('visitor_stats').select('*').single();
-      if (statData) {
+      const statRes = await fetch(`${API_BASE_URL}/analytics`, { headers: defaultHeaders });
+      if (statRes.ok) {
+        const statData = await statRes.json();
         setVisitorStats({
-          totalVisitors: statData.total_visitors,
-          todayVisitors: statData.today_visitors,
-          totalPageViews: statData.total_page_views,
-          conversionRate: Number(statData.conversion_rate),
-          activeNow: statData.active_now,
+          totalVisitors: statData.totalVisitors ?? statData.total_visitors ?? 0,
+          todayVisitors: statData.todayVisitors ?? statData.today_visitors ?? 0,
+          totalPageViews: statData.totalPageViews ?? statData.total_page_views ?? 0,
+          conversionRate: Number(statData.conversionRate ?? statData.conversion_rate ?? 0),
+          activeNow: statData.activeNow ?? statData.active_now ?? 1,
           history: defaultStats.history
         });
       }
     } catch (err) {
-      console.error('Error fetching Supabase data:', err);
+      console.warn('Backend API connection notice:', err);
     } finally {
       setIsLoading(false);
     }
@@ -158,41 +158,41 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     refreshData();
   }, []);
 
-  // Product CRUD
+  // Product CRUD (Routed securely through backend API)
   const addProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
     const id = 'prod_' + Date.now();
     const soldOutAt = productData.stockCount <= 0 ? (productData.soldOutAt || new Date().toISOString()) : undefined;
-    const descWithTag = embedSoldOutAtInDescription(productData.description, soldOutAt);
     const newProduct: Product = { ...productData, id, soldOutAt };
 
-    const row: any = {
-      id,
-      title: productData.title,
-      slug: productData.slug,
-      category: productData.category,
-      fit: productData.fit,
-      price: productData.price,
-      original_price: productData.originalPrice,
-      discount: productData.discount,
-      stock_count: productData.stockCount,
-      sizes: productData.sizes,
-      colors: productData.colors,
-      images: productData.images,
-      description: descWithTag,
-      fabric: productData.fabric,
-      rating: 4.8,
-      reviews_count: 1,
-      is_new: true,
-      is_trending: false,
-      is_bestseller: false
-    };
-
     try {
-      row.sold_out_at = soldOutAt || null;
-      await supabase.from('products').insert([row]);
-    } catch {
-      delete row.sold_out_at;
-      await supabase.from('products').insert([row]);
+      await fetch(`${API_BASE_URL}/products`, {
+        method: 'POST',
+        headers: defaultHeaders,
+        body: JSON.stringify({
+          title: productData.title,
+          slug: productData.slug || productData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          category: productData.category,
+          fit: productData.fit,
+          price: productData.price,
+          originalPrice: productData.originalPrice,
+          discount: productData.discount,
+          stockCount: productData.stockCount,
+          sizes: productData.sizes,
+          colors: productData.colors,
+          images: productData.images,
+          description: productData.description,
+          fabric: productData.fabric,
+          washCare: productData.washCare || 'Machine wash cold with like colors.',
+          rating: productData.rating || 4.8,
+          reviewsCount: productData.reviewsCount || 100,
+          isNew: productData.isNew ?? true,
+          isTrending: productData.isTrending ?? false,
+          isBestSeller: productData.isBestSeller ?? false,
+          soldOutAt
+        })
+      });
+    } catch (e) {
+      console.warn('Backend addProduct notice:', e);
     }
 
     setProducts(prev => [newProduct, ...prev]);
@@ -201,33 +201,35 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateProduct = async (productData: Product): Promise<Product> => {
     const soldOutAt = productData.stockCount <= 0 ? (productData.soldOutAt || new Date().toISOString()) : undefined;
-    const descWithTag = embedSoldOutAtInDescription(productData.description, soldOutAt);
-
-    const updatePayload: any = {
-      title: productData.title,
-      category: productData.category,
-      fit: productData.fit,
-      price: productData.price,
-      original_price: productData.originalPrice,
-      discount: productData.discount,
-      stock_count: productData.stockCount,
-      sizes: productData.sizes,
-      colors: productData.colors,
-      images: productData.images,
-      description: descWithTag,
-      fabric: productData.fabric
-    };
-
-    try {
-      updatePayload.sold_out_at = soldOutAt || null;
-      await supabase.from('products').update(updatePayload).eq('id', productData.id);
-    } catch {
-      delete updatePayload.sold_out_at;
-      await supabase.from('products').update(updatePayload).eq('id', productData.id);
-    }
-
     const updatedProduct = { ...productData, soldOutAt };
     setProducts(prev => prev.map(p => p.id === productData.id ? updatedProduct : p));
+
+    try {
+      await fetch(`${API_BASE_URL}/products/${productData.id}`, {
+        method: 'PATCH',
+        headers: defaultHeaders,
+        body: JSON.stringify({
+          title: productData.title,
+          slug: productData.slug,
+          category: productData.category,
+          fit: productData.fit,
+          price: productData.price,
+          originalPrice: productData.originalPrice,
+          discount: productData.discount,
+          stockCount: productData.stockCount,
+          sizes: productData.sizes,
+          colors: productData.colors,
+          images: productData.images,
+          description: productData.description,
+          fabric: productData.fabric,
+          washCare: productData.washCare,
+          soldOutAt
+        })
+      });
+    } catch (e) {
+      console.warn('Backend updateProduct notice:', e);
+    }
+
     return updatedProduct;
   };
 
@@ -237,15 +239,13 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProducts(prev => prev.filter(p => p.id !== id));
 
     try {
-      // 1. Clean up any historical order items referencing this product to satisfy FK constraint
-      await supabase.from('order_items').delete().eq('product_id', id);
-
-      // 2. Delete product from Supabase
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) {
-        console.error('Supabase product delete error:', error);
+      const res = await fetch(`${API_BASE_URL}/products/${id}`, {
+        method: 'DELETE',
+        headers: defaultHeaders
+      });
+      if (!res.ok) {
         setProducts(previousProducts); // Rollback optimistic state
-        alert('Could not delete product: ' + error.message);
+        alert('Could not delete product: server returned an error');
         return false;
       }
       return true;
@@ -261,36 +261,28 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const validStock = Math.max(0, newStock);
     const prod = products.find(p => p.id === id);
     const soldOutAt = validStock <= 0 ? (prod?.soldOutAt || new Date().toISOString()) : undefined;
-    const descWithTag = embedSoldOutAtInDescription(prod?.description || '', soldOutAt);
 
     // Optimistic UI Update: immediately update state in 0ms
     const previousProducts = products;
     setProducts(prev => prev.map(p => p.id === id ? { 
       ...p, 
       stockCount: validStock, 
-      inStock: validStock > 0,
+      inStock: validStock > 0, 
       soldOutAt 
     } : p));
 
-    const updatePayload: any = {
-      stock_count: validStock,
-      description: descWithTag
-    };
-
     try {
-      updatePayload.sold_out_at = soldOutAt || null;
-      await supabase.from('products').update(updatePayload).eq('id', id);
-    } catch {
-      delete updatePayload.sold_out_at;
-      try {
-        await supabase.from('products').update(updatePayload).eq('id', id);
-      } catch (err) {
-        setProducts(previousProducts); // Rollback optimistic state
-      }
+      await fetch(`${API_BASE_URL}/products/${id}`, {
+        method: 'PATCH',
+        headers: defaultHeaders,
+        body: JSON.stringify({ stockCount: validStock, soldOutAt })
+      });
+    } catch (err) {
+      setProducts(previousProducts); // Rollback optimistic state
     }
   };
 
-  // Order Fulfillment (Optimistic UI Rendering)
+  // Order Fulfillment (Optimistic UI Rendering via backend)
   const updateOrderStatus = async (orderId: string, status: Order['status'], packingNotes?: string) => {
     // Optimistic UI Update: update badge and status in 0ms
     const previousOrders = orders;
@@ -305,37 +297,38 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return o;
     }));
 
-    const updatePayload: any = { status };
-    if (packingNotes !== undefined) updatePayload.packing_notes = packingNotes;
-
     try {
-      const { error } = await supabase.from('orders').update(updatePayload).eq('id', orderId);
-      if (error) {
-        setOrders(previousOrders); // Rollback optimistic state on error
-        console.warn('Order status update rollback:', error);
-      }
+      await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: defaultHeaders,
+        body: JSON.stringify({ status, packingNotes })
+      });
     } catch (err) {
       setOrders(previousOrders); // Rollback optimistic state
     }
   };
 
-  // Coupon CRUD
+  // Coupon CRUD (Backend Proxy)
   const addCoupon = async (couponData: Omit<DiscountCoupon, 'id' | 'usageCount'>) => {
     const id = 'c_' + Date.now();
     const newCoupon: DiscountCoupon = { ...couponData, id, usageCount: 0 };
-
-    await supabase.from('coupons').insert([
-      {
-        id,
-        code: couponData.code.toUpperCase(),
-        type: couponData.type,
-        value: couponData.value,
-        min_order_value: couponData.minOrderValue,
-        is_active: couponData.isActive
-      }
-    ]);
-
     setCoupons(prev => [newCoupon, ...prev]);
+
+    try {
+      await fetch(`${API_BASE_URL}/coupons`, {
+        method: 'POST',
+        headers: defaultHeaders,
+        body: JSON.stringify({
+          code: couponData.code.toUpperCase(),
+          type: couponData.type,
+          value: couponData.value,
+          minOrderValue: couponData.minOrderValue,
+          isActive: couponData.isActive
+        })
+      });
+    } catch (e) {
+      console.warn('Backend addCoupon notice:', e);
+    }
   };
 
   const toggleCoupon = async (id: string) => {
@@ -343,13 +336,28 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!coupon) return;
     const nextState = !coupon.isActive;
 
-    await supabase.from('coupons').update({ is_active: nextState }).eq('id', id);
     setCoupons(prev => prev.map(c => c.id === id ? { ...c, isActive: nextState } : c));
+
+    try {
+      await fetch(`${API_BASE_URL}/coupons/${id}/toggle?is_active=${nextState}`, {
+        method: 'PATCH',
+        headers: defaultHeaders
+      });
+    } catch (e) {
+      console.warn('Backend toggleCoupon notice:', e);
+    }
   };
 
   const deleteCoupon = async (id: string) => {
-    await supabase.from('coupons').delete().eq('id', id);
     setCoupons(prev => prev.filter(c => c.id !== id));
+    try {
+      await fetch(`${API_BASE_URL}/coupons/${id}`, {
+        method: 'DELETE',
+        headers: defaultHeaders
+      });
+    } catch (e) {
+      console.warn('Backend deleteCoupon notice:', e);
+    }
   };
 
   return (
