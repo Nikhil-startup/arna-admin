@@ -5,6 +5,7 @@ import { AdminOrders } from './components/AdminOrders';
 import { AdminProducts } from './components/AdminProducts';
 import { AdminDiscounts } from './components/AdminDiscounts';
 import { AdminAnalytics } from './components/AdminAnalytics';
+import { AdminSecurityAndBilling } from './components/AdminSecurityAndBilling';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminLoader } from './components/AdminLoader';
 
@@ -13,7 +14,7 @@ const AdminContent: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('arna_admin_auth') === 'true';
   });
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'discounts' | 'analytics'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'discounts' | 'analytics' | 'security'>('orders');
 
   if (!isAuthenticated) {
     return <AdminLogin onLogin={() => setIsAuthenticated(true)} />;
@@ -41,6 +42,7 @@ const AdminContent: React.FC = () => {
         {activeTab === 'products' && <AdminProducts />}
         {activeTab === 'discounts' && <AdminDiscounts />}
         {activeTab === 'analytics' && <AdminAnalytics />}
+        {activeTab === 'security' && <AdminSecurityAndBilling />}
       </main>
     </div>
   );

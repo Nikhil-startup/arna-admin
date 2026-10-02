@@ -1,9 +1,9 @@
 import React from 'react';
-import { Package, ShoppingBag, Tag, BarChart3, ExternalLink, LogOut, Radio } from 'lucide-react';
+import { Package, ShoppingBag, Tag, BarChart3, ExternalLink, LogOut, Radio, ShieldCheck } from 'lucide-react';
 
 interface Props {
-  activeTab: 'orders' | 'products' | 'discounts' | 'analytics';
-  setActiveTab: (tab: 'orders' | 'products' | 'discounts' | 'analytics') => void;
+  activeTab: 'orders' | 'products' | 'discounts' | 'analytics' | 'security';
+  setActiveTab: (tab: 'orders' | 'products' | 'discounts' | 'analytics' | 'security') => void;
   pendingOrdersCount: number;
   activeNow: number;
   onLogout: () => void;
@@ -102,6 +102,18 @@ export const AdminNavbar: React.FC<Props> = ({
             >
               <BarChart3 className="w-4 h-4" />
               <span>Analytics</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+                activeTab === 'security'
+                  ? 'bg-black text-white shadow-sm'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Security & Alerts</span>
             </button>
           </nav>
 
